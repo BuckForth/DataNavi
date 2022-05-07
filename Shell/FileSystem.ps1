@@ -27,7 +27,7 @@ function GetDirectoryListing{
     }
 }
 
-function GetTree{
+function Get-Tree{
     param (
         [string][parameter(mandatory=$true, Valuefrompipeline = $true)] $Path  #[string] Directory to begin file search
     )
@@ -37,7 +37,7 @@ function GetTree{
     Get-ChildItem "$Path" | 
     Foreach-Object {
         if($_ -is [System.IO.DirectoryInfo])
-            {$subnode = GetTree $_.FullName}
+            {$subnode = Get-Tree $_.FullName}
         else
         {
             $subnode = New-Object System.Windows.Forms.TreeNode
@@ -48,3 +48,43 @@ function GetTree{
     }
     $node
 }
+
+Function Out-GridList {
+    [cmdletbinding()]
+    
+    Param(
+        [Parameter(Position=0,Mandatory,ValueFromPipeline)]
+        [object]$InputObject,
+        [string]$Title="Out-GridList",
+        [switch]$Passthru
+    )
+    
+    Begin 
+    {
+        #initialize data array
+        $data=@()
+    }
+    Process 
+    {
+        #initialize a hashtable for properties
+        $propHash = @{}
+        #get property names from the first object in the array
+        $properties = $InputObject | Get-Member -MemberType Properties
+        
+        $properties.name | foreach {
+        Write-Verbose "Adding $_"
+        $propHash.add($_,$InputObject.$_)
+        } #foreach
+        
+        $data +=$propHash
+        
+    } #Process 
+    End 
+    {
+        #tweak hashtable output
+        $data.GetEnumerator().GetEnumerator() | 
+        Select-Object @{Name="Property";Expression={$_.name}},Value |
+        Out-GridView -Title $Title -PassThru:$Passthru
+    }
+    
+} #end Out-Gridlist
